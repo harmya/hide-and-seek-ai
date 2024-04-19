@@ -44,8 +44,10 @@ fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
 
 
     if gen_range(0, 100) < 10 {
-        direction_x = gen_range(-1.0, 1.0);
-        direction_y = gen_range(-1.0, 1.0);
+        let angle = gen_range(0.0, 2.0 * std::f32::consts::PI);
+        direction_x = angle.cos();
+        direction_y = angle.sin();
+
     }
 
     seeker.velocity.x = direction_x * magnitude;
@@ -71,8 +73,9 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
     let mut direction_y = hider.velocity.y / magnitude;
 
     if gen_range(0, 100) < 10 {
-        direction_x = gen_range(-1.0, 1.0);
-        direction_y = gen_range(-1.0, 1.0);
+        let angle = gen_range(0.0, 2.0 * std::f32::consts::PI);
+        direction_x = angle.cos();
+        direction_y = angle.sin();
     }
 
     hider.velocity.x = direction_x * magnitude;
