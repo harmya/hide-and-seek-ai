@@ -36,8 +36,23 @@ fn degree_to_radian(degree: f32) -> f32 {
     degree * std::f32::consts::PI / 180.0
 }
 
-
 fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
+    let magnitude = (seeker.velocity.x.powi(2) + seeker.velocity.y.powi(2)).sqrt();
+    let direction_x = seeker.velocity.x / magnitude;
+    let direction_y = seeker.velocity.y / magnitude;
+
+
+    if gen_range(0, 100) < 10 {
+        let direction_x = gen_range(-1.0, 1.0);
+        let direction_y = gen_range(-1.0, 1.0);
+    }
+
+    let random_number = gen_range(0.0, 1.0);
+    if random_number < 0.1 {
+        seeker.velocity.x = gen_range(-10.0, 10.0);
+        seeker.velocity.y = gen_range(-10.0, 10.0);
+    }
+
     seeker.x = seeker.x + seeker.velocity.x * time;
     seeker.y = seeker.y + seeker.velocity.y * time;
 
@@ -64,7 +79,7 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
 #[macroquad::main(window_conf)]
 async fn main() {
     let radius = 10.0;
-    let speed = 5.0;
+    let speed = 8.0;
     let width = screen_width();
     let height = screen_height();
 
