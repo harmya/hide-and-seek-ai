@@ -38,24 +38,6 @@ fn degree_to_radian(degree: f32) -> f32 {
 
 fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
 
-    let magnitude = (seeker.velocity.x.powi(2) + seeker.velocity.y.powi(2)).sqrt();
-    let mut direction_x = seeker.velocity.x / magnitude;
-    let mut direction_y = seeker.velocity.y / magnitude;
-
-
-    if gen_range(0, 100) < 10 {
-        let angle = gen_range(0.0, 2.0 * std::f32::consts::PI);
-        direction_x = angle.cos();
-        direction_y = angle.sin();
-
-    }
-
-    seeker.velocity.x = direction_x * magnitude;
-    seeker.velocity.y = direction_y * magnitude;
-
-    seeker.x = seeker.x + seeker.velocity.x * time;
-    seeker.y = seeker.y + seeker.velocity.y * time;
-
     if seeker.x > width - 10.0 || seeker.x < 10.0 {
         seeker.velocity.x = -seeker.velocity.x;
     }
@@ -63,8 +45,30 @@ fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
         seeker.velocity.y = -seeker.velocity.y;
     }
 
-    println!("{:?}", seeker.velocity.x);
-    println!("{:?}", seeker.velocity.y);
+    let magnitude = (seeker.velocity.x.powi(2) + seeker.velocity.y.powi(2)).sqrt();
+    let mut direction_x = seeker.velocity.x / magnitude;
+    let mut direction_y = seeker.velocity.y / magnitude;
+
+
+    // if gen_range(0, 1000) < 1 {
+    //     let angle = gen_range(0.0, 2.0 * std::f32::consts::PI);
+    //     direction_x = angle.cos();
+    //     direction_y = angle.sin();
+
+    // }
+
+    seeker.velocity.x = direction_x * magnitude;
+    seeker.velocity.y = direction_y * magnitude;
+
+    seeker.x = seeker.x + seeker.velocity.x * time;
+    seeker.y = seeker.y + seeker.velocity.y * time;
+
+    let angle_of_velocity = seeker.velocity.y.atan2(seeker.velocity.x);
+    for sensor in seeker.vision_sensors.iter_mut() {
+        sensor.angle = angle_of_velocity + sensor.angle;
+        sensor.x = seeker.x;
+        sensor.y = seeker.y;
+    }
 }
 
 fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
@@ -72,7 +76,7 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
     let mut direction_x = hider.velocity.x / magnitude;
     let mut direction_y = hider.velocity.y / magnitude;
 
-    if gen_range(0, 100) < 10 {
+    if gen_range(0, 1000) < 1 {
         let angle = gen_range(0.0, 2.0 * std::f32::consts::PI);
         direction_x = angle.cos();
         direction_y = angle.sin();
@@ -134,11 +138,6 @@ async fn main() {
         let t = get_frame_time() as f32 * speed;
         move_seeker(&mut seeker, t, width, height);
         move_hider(&mut hider, t, width, height);
-
-        for sensor in seeker.vision_sensors.iter_mut() {
-            sensor.x = seeker.x;
-            sensor.y = seeker.y;
-        }
 
         draw_circle(seeker.x, seeker.y, radius, seeker.color);
         for sensor in seeker.vision_sensors.iter() {
