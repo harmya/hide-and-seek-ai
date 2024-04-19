@@ -6,7 +6,6 @@ use macroquad::prelude::*;
 enum GameStatus {
     Paused,
     Running,
-    GameOver,
 }
 
 /* ---------Structs --------- */
@@ -23,44 +22,45 @@ struct VisionSensor {
 }
 
 impl VisionSensor {
-    fn sees_hider(&self, hider: &Hider) -> bool {
-        let distance = ((self.x - hider.x).powi(2) + (self.y - hider.y).powi(2)).sqrt();
-        if distance < self.range + 9.0 {
-            let angle = (hider.y - self.y).atan2(hider.x - self.x);
-            let angle_diff = angle - self.angle;
-            if angle_diff.abs() < degree_to_radian(30.0) {
-                return true;
-            }
+    fn sees_hider(&self, hider: &Hider, obstable: &Obstacle) -> bool {
+        let blocked = self.blocked_by_obs(obstable);
+        let start_x = self.x;
+        let start_y = self.y;
+
+        let mut end_x = self.x + self.range * self.angle.cos();
+        let mut end_y = self.y + self.range * self.angle.sin();
+
+        if blocked.0 != 0.0 || blocked.1 != 0.0 {
+            end_x = blocked.0;
+            end_y = blocked.1;
         }
-        false
+
+        // get t, the projection of the hider on the line
+        let t = ((hider.x - start_x) * (end_x - start_x) + (hider.y - start_y) * (end_y - start_y)) / (self.range * self.range);
+        let t = t.max(0.0).min(1.0);
+        let closest_x = start_x + t * (end_x - start_x);
+        let closest_y = start_y + t * (end_y - start_y);
+
+        let distance = ((hider.x - closest_x).powi(2) + (hider.y - closest_y).powi(2)).sqrt();
+
+        return distance < 10.0;
     }
 
     fn blocked_by_obs(&self, obs: &Obstacle) -> (f32, f32) {
-        // this function return how much sensor can see, after being blocked by obstacle
-        let x1 = self.x;
-        let y1 = self.y;
-        let x2 = self.x + self.range * self.angle.cos();
-        let y2 = self.y + self.range * self.angle.sin();
+        let sensor_end_x = self.x + self.range * self.angle.cos();
+        let sensor_end_y = self.y + self.range * self.angle.sin();
 
-        let x3 = obs.x;
-        let y3 = obs.y;
-        let x4 = obs.x + obs.length;
-        let y4 = obs.y;
+        let p1 = (self.x, self.y);
+        let p2 = (sensor_end_x, sensor_end_y);
+        let p3 = (obs.x, obs.y);
+        let p4 = (obs.x + obs.length, obs.y);
 
-        let denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-        if denominator == 0.0 {
-            return (0.0, 0.0);
+        let intersection = line_intersection(p1, p2, p3, p4);
+
+        match intersection {
+            Some((x, y)) => (x, y),
+            None => (0.0, 0.0),
         }
-
-        let t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator;
-        let u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denominator;
-
-        if t > 0.0 && t < 1.0 && u > 0.0 && u < 1.0 {
-            let x = x1 + t * (x2 - x1);
-            let y = y1 + t * (y2 - y1);
-            return (x, y);
-        }
-        (0.0, 0.0)
     }
 }
 struct Seeker {
@@ -111,11 +111,19 @@ fn move_seeker(seeker: &mut Seeker, obst: &Obstacle, time: f32, width: f32, heig
     let mut direction_y = seeker.velocity.y / magnitude;
 
 
-     if gen_range(0, 100) < 2 {
-         let angle = gen_range(0.0, 2.0 * std::f32::consts::PI);
-         direction_x = angle.cos();
-         direction_y = angle.sin();
-     }
+    if is_key_pressed(KeyCode::D) {
+        direction_x = degree_to_radian(0.0).cos();
+        direction_y = degree_to_radian(0.0).sin();
+    } else if is_key_pressed(KeyCode::A) {
+        direction_x = degree_to_radian(180.0).cos();
+        direction_y = degree_to_radian(180.0).sin();
+    } else if is_key_pressed(KeyCode::W) {
+        direction_y = degree_to_radian(-90.0).sin();
+        direction_x = degree_to_radian(-90.0).cos();
+    } else if is_key_pressed(KeyCode::S) {
+        direction_y = degree_to_radian(90.0).sin();
+        direction_x = degree_to_radian(90.0).cos();
+    }
 
     seeker.velocity.x = direction_x * magnitude;
     seeker.velocity.y = direction_y * magnitude;
@@ -147,11 +155,11 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32
         direction_x = degree_to_radian(180.0).cos();
         direction_y = degree_to_radian(180.0).sin();
     } else if is_key_pressed(KeyCode::Up) {
-        direction_y = degree_to_radian(90.0).sin();
-        direction_x = degree_to_radian(90.0).cos();
-    } else if is_key_pressed(KeyCode::Down) {
         direction_y = degree_to_radian(-90.0).sin();
         direction_x = degree_to_radian(-90.0).cos();
+    } else if is_key_pressed(KeyCode::Down) {
+        direction_y = degree_to_radian(90.0).sin();
+        direction_x = degree_to_radian(90.0).cos();
     }
 
     hider.velocity.x = direction_x * magnitude;
@@ -169,10 +177,29 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32
 
 }
 
+fn line_intersection(p1: (f32, f32), p2: (f32, f32), p3: (f32, f32), p4: (f32, f32)) -> Option<(f32, f32)> {
+    let s1_x = p2.0 - p1.0;
+    let s1_y = p2.1 - p1.1;
+    let s2_x = p4.0 - p3.0;
+    let s2_y = p4.1 - p3.1;
+
+    let s = (-s1_y * (p1.0 - p3.0) + s1_x * (p1.1 - p3.1)) / (-s2_x * s1_y + s1_x * s2_y);
+    let t = ( s2_x * (p1.1 - p3.1) - s2_y * (p1.0 - p3.0)) / (-s2_x * s1_y + s1_x * s2_y);
+
+    if s >= 0.0 && s <= 1.0 && t >= 0.0 && t <= 1.0 {
+        // Collision detected
+        let x = p1.0 + (t * s1_x);
+        let y = p1.1 + (t * s1_y);
+        return Some((x, y));
+    }
+
+    None
+}
+
 fn draw_frame(hider: &Hider, seeker: &Seeker, obstacle: &Obstacle, radius: f32) {
     draw_circle(seeker.x, seeker.y, radius, seeker.color);
     for sensor in seeker.vision_sensors.iter() {
-        let color = if sensor.sees_hider(hider) { GREEN } else { WHITE };
+        let color = if sensor.sees_hider(hider, obstacle) { GREEN } else { WHITE };
         let (x, y) = sensor.blocked_by_obs(obstacle);
         draw_line(
             sensor.x,
@@ -249,7 +276,7 @@ async fn main() {
             move_seeker(&mut seeker, &obstacle, t, width, height, fov, radius);
             move_hider(&mut hider, t, width, height, radius);
             draw_frame(&hider, &seeker, &obstacle, radius);
-            found = seeker.vision_sensors.iter().any(|sensor| sensor.sees_hider(&hider));
+            found = seeker.vision_sensors.iter().any(|sensor| sensor.sees_hider(&hider, &obstacle));
             if found {
                 game_status = GameStatus::Paused;
             }
