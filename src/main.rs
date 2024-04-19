@@ -115,6 +115,17 @@ impl Hider {
     }
 }
 
+impl Obstacle {
+    fn new(x: f32, y: f32, length: f32, color: Color) -> Self {
+        Self {
+            x,
+            y,
+            length,
+            color,
+        }
+    }
+}
+
 /* ---------Functions --------- */
 
 fn degree_to_radian(degree: f32) -> f32 {
@@ -258,8 +269,8 @@ async fn main() {
     let width = screen_width();
     let height = screen_height();
     let fov = 90.0;
-    let mut seeker = Seeker::new(100.0, 100.0, RED, 5, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
-
+    let mut seeker = Seeker::new(100.0, 100.0, RED, 5, 
+            Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
     let mut hider = Hider::new(200.0, 200.0, BLUE, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
 
 
