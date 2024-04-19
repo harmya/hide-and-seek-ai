@@ -2,6 +2,13 @@ use macroquad::rand::gen_range;
 use macroquad::prelude::*;
 
 
+/* ---------Enums------------ */
+enum GameStatus {
+    Paused,
+    Running,
+    GameOver,
+}
+
 /* ---------Structs --------- */
 struct Velocity {
     x: f32,
@@ -87,7 +94,6 @@ fn degree_to_radian(degree: f32) -> f32 {
 }
 
 fn move_seeker(seeker: &mut Seeker, obst: &Obstacle, time: f32, width: f32, height: f32, fov: f32, radius: f32) {
-
     if seeker.x > width - radius || seeker.x < radius {
         seeker.velocity.x = -seeker.velocity.x;
     }
@@ -134,10 +140,18 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32
     let mut direction_x = hider.velocity.x / magnitude;
     let mut direction_y = hider.velocity.y / magnitude;
 
-    if gen_range(0, 100) < 2 {
-        let angle = gen_range(0.0, 2.0 * std::f32::consts::PI);
-        direction_x = angle.cos();
-        direction_y = angle.sin();
+    if is_key_pressed(KeyCode::Right) {
+        direction_x = degree_to_radian(0.0).cos();
+        direction_y = degree_to_radian(0.0).sin();
+    } else if is_key_pressed(KeyCode::Left) {
+        direction_x = degree_to_radian(180.0).cos();
+        direction_y = degree_to_radian(180.0).sin();
+    } else if is_key_pressed(KeyCode::Up) {
+        direction_y = degree_to_radian(90.0).sin();
+        direction_x = degree_to_radian(90.0).cos();
+    } else if is_key_pressed(KeyCode::Down) {
+        direction_y = degree_to_radian(-90.0).sin();
+        direction_x = degree_to_radian(-90.0).cos();
     }
 
     hider.velocity.x = direction_x * magnitude;
@@ -153,16 +167,12 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32
         hider.velocity.y = -hider.velocity.y;
     }
 
-
 }
 
 fn draw_frame(hider: &Hider, seeker: &Seeker, obstacle: &Obstacle, radius: f32) {
     draw_circle(seeker.x, seeker.y, radius, seeker.color);
     for sensor in seeker.vision_sensors.iter() {
         let color = if sensor.sees_hider(hider) { GREEN } else { WHITE };
-        if sensor.sees_hider(hider) {
-            println!("Saw the hider!")
-        }
         let (x, y) = sensor.blocked_by_obs(obstacle);
         draw_line(
             sensor.x,
@@ -187,6 +197,7 @@ fn draw_frame(hider: &Hider, seeker: &Seeker, obstacle: &Obstacle, radius: f32) 
 /* ---------Main --------- */
 #[macroquad::main(window_conf)]
 async fn main() {
+    let mut game_status = GameStatus::Running;
     let radius = 10.0;
     let speed = 8.0;
     let width = screen_width();
@@ -229,15 +240,33 @@ async fn main() {
         color: WHITE,
     };
 
+    let mut found = false;
+
     loop {  
-        clear_background(BLACK);
-        let t = get_frame_time() as f32 * speed;
-        move_seeker(&mut seeker, &obstacle, t, width, height, fov, radius);
-        move_hider(&mut hider, t, width, height, radius);
-        draw_frame(&hider, &seeker, &obstacle, radius);
-        next_frame().await;
+        if let GameStatus::Running = game_status {
+            clear_background(BLACK);
+            let t = get_frame_time() as f32 * speed;
+            move_seeker(&mut seeker, &obstacle, t, width, height, fov, radius);
+            move_hider(&mut hider, t, width, height, radius);
+            draw_frame(&hider, &seeker, &obstacle, radius);
+            found = seeker.vision_sensors.iter().any(|sensor| sensor.sees_hider(&hider));
+            if found {
+                game_status = GameStatus::Paused;
+            }
+        }
+        if let GameStatus::Paused = game_status {
+            draw_frame(&hider, &seeker, &obstacle, radius);
+        }
+        if is_key_pressed(KeyCode::Space) {
+            game_status = GameStatus::Running;
+            found = false;
+        }
+
+        next_frame().await
     }
+        
 }
+
 
 fn window_conf() -> Conf {
     Conf {
