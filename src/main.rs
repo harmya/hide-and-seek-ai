@@ -27,6 +27,34 @@ impl VisionSensor {
         }
         false
     }
+
+    fn blocked_by_obs(&self, obs: &Obstacle) -> (f32, f32) {
+        // this function return how much sensor can see, after being blocked by obstacle
+        let x1 = self.x;
+        let y1 = self.y;
+        let x2 = self.x + self.range * self.angle.cos();
+        let y2 = self.y + self.range * self.angle.sin();
+
+        let x3 = obs.x;
+        let y3 = obs.y;
+        let x4 = obs.x + obs.length;
+        let y4 = obs.y;
+
+        let denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+        if denominator == 0.0 {
+            return (0.0, 0.0);
+        }
+
+        let t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator;
+        let u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denominator;
+
+        if t > 0.0 && t < 1.0 && u > 0.0 && u < 1.0 {
+            let x = x1 + t * (x2 - x1);
+            let y = y1 + t * (y2 - y1);
+            return (x, y);
+        }
+        (0.0, 0.0)
+    }
 }
 struct Seeker {
     x: f32,
@@ -44,6 +72,13 @@ struct Hider {
     velocity: Velocity,
 }
 
+struct Obstacle {
+    x: f32,
+    y: f32,
+    length: f32,
+    color: Color,
+}
+
 
 /* ---------Functions --------- */
 
@@ -51,12 +86,17 @@ fn degree_to_radian(degree: f32) -> f32 {
     degree * std::f32::consts::PI / 180.0
 }
 
-fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32, fov: f32) {
+fn move_seeker(seeker: &mut Seeker, obst: &Obstacle, time: f32, width: f32, height: f32, fov: f32, radius: f32) {
 
-    if seeker.x > width - 10.0 || seeker.x < 10.0 {
+    if seeker.x > width - radius || seeker.x < radius {
         seeker.velocity.x = -seeker.velocity.x;
     }
-    if seeker.y > height - 10.0 || seeker.y < 10.0 {
+    if seeker.y > height - radius || seeker.y < radius {
+        seeker.velocity.y = -seeker.velocity.y;
+    }
+
+    if seeker.x > obst.x && seeker.x < obst.x + obst.length && seeker.y > obst.y - radius && seeker.y < obst.y + radius {
+        seeker.velocity.x = -seeker.velocity.x;
         seeker.velocity.y = -seeker.velocity.y;
     }
 
@@ -89,7 +129,7 @@ fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32, fov: f32
     }
 }
 
-fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
+fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32) {
     let magnitude = (hider.velocity.x.powi(2) + hider.velocity.y.powi(2)).sqrt();
     let mut direction_x = hider.velocity.x / magnitude;
     let mut direction_y = hider.velocity.y / magnitude;
@@ -106,14 +146,43 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
     hider.x = hider.x + hider.velocity.x * time;
     hider.y = hider.y + hider.velocity.y * time;
 
-    if hider.x > width - 10.0 || hider.x < 10.0 {
+    if hider.x > width - radius || hider.x < radius {
         hider.velocity.x = -hider.velocity.x;
     }
-    if hider.y > height - 10.0 || hider.y < 10.0 {
+    if hider.y > height - radius || hider.y < radius {
         hider.velocity.y = -hider.velocity.y;
     }
+
+
 }
 
+fn draw_frame(hider: &Hider, seeker: &Seeker, obstacle: &Obstacle, radius: f32) {
+    draw_circle(seeker.x, seeker.y, radius, seeker.color);
+    for sensor in seeker.vision_sensors.iter() {
+        let color = if sensor.sees_hider(hider) { GREEN } else { WHITE };
+        if sensor.sees_hider(hider) {
+            println!("Saw the hider!")
+        }
+        let (x, y) = sensor.blocked_by_obs(obstacle);
+        draw_line(
+            sensor.x,
+            sensor.y,
+            if x == 0.0 { sensor.x + sensor.range * sensor.angle.cos() } else { x },
+            if y == 0.0 { sensor.y + sensor.range * sensor.angle.sin() } else { y },
+            1.0,
+            color,
+        );
+    }
+    draw_circle(hider.x, hider.y, radius, hider.color);
+    draw_line(
+        obstacle.x,
+        obstacle.y,
+        obstacle.x + obstacle.length,
+        obstacle.y,
+        1.0,
+        obstacle.color,
+    );
+}
 
 /* ---------Main --------- */
 #[macroquad::main(window_conf)]
@@ -124,12 +193,12 @@ async fn main() {
     let height = screen_height();
     let fov = 90.0;
     let mut seeker = Seeker {
-        x: gen_range(10.0, width),
-        y: gen_range(10.0, height),
+        x: gen_range(radius, width),
+        y: gen_range(radius, height),
         color: RED,
         num_vision_sensors: 6,
         vision_sensors: Vec::new(),
-        velocity: Velocity { x: gen_range(-10.0, 10.0), y: gen_range(-10.0, 10.0) },
+        velocity: Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) },
     };
 
     let step_angle = fov / (seeker.num_vision_sensors as f32 - 1.0);
@@ -149,29 +218,23 @@ async fn main() {
         y: gen_range(0.0, height),
         color: BLUE,
         caught: false,
-        velocity: Velocity { x: gen_range(-10.0, 10.0), y: gen_range(-10.0, 10.0) },
+        velocity: Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) },
     };
 
-    loop {
-        clear_background(BLACK);
-    
-        let t = get_frame_time() as f32 * speed;
-        move_seeker(&mut seeker, t, width, height, fov);
-        move_hider(&mut hider, t, width, height);
 
-        draw_circle(seeker.x, seeker.y, radius, seeker.color);
-        for sensor in seeker.vision_sensors.iter() {
-            let color = if sensor.sees_hider(&hider) { GREEN } else { WHITE };
-            draw_line(
-                sensor.x,
-                sensor.y,
-                sensor.x + sensor.range * sensor.angle.cos(),
-                sensor.y + sensor.range * sensor.angle.sin(),
-                2.0,
-                color,
-            );
-        }
-        draw_circle(hider.x, hider.y, radius, hider.color);
+    let obstacle = Obstacle {
+        x: 100.0,
+        y: 100.0,
+        length: 100.0,
+        color: WHITE,
+    };
+
+    loop {  
+        clear_background(BLACK);
+        let t = get_frame_time() as f32 * speed;
+        move_seeker(&mut seeker, &obstacle, t, width, height, fov, radius);
+        move_hider(&mut hider, t, width, height, radius);
+        draw_frame(&hider, &seeker, &obstacle, radius);
         next_frame().await;
     }
 }
