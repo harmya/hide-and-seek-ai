@@ -248,7 +248,6 @@ async fn main() {
         x: gen_range(0.0, width),
         y: gen_range(0.0, height),
         color: BLUE,
-        caught: false,
         velocity: Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) },
     };
 
@@ -263,6 +262,11 @@ async fn main() {
     let mut found = false;
 
     loop {  
+        if is_key_pressed(KeyCode::Space) {
+            game_status = GameStatus::Running;
+            found = false;
+        }
+
         if let GameStatus::Running = game_status {
             clear_background(BLACK);
             let t = get_frame_time() as f32 * speed;
@@ -276,10 +280,6 @@ async fn main() {
         }
         if let GameStatus::Paused = game_status {
             draw_frame(&hider, &seeker, &obstacle, radius);
-        }
-        if is_key_pressed(KeyCode::Space) {
-            game_status = GameStatus::Running;
-            found = false;
         }
 
         next_frame().await
