@@ -1,6 +1,7 @@
 use macroquad::rand::gen_range;
 use macroquad::prelude::*;
 mod network;
+use ndarray::array;
 
 /* ---------Enums------------ */
 enum GameStatus {
@@ -180,21 +181,24 @@ fn move_seeker(seeker: &mut Seeker, obst: &Obstacle, time: f32, width: f32, heig
     }
 }
 
-fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32) {
+fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32, hider_network: &network::NeuralNetwork) {
     let magnitude = (hider.velocity.x.powi(2) + hider.velocity.y.powi(2)).sqrt();
     let mut direction_x = hider.velocity.x / magnitude;
     let mut direction_y = hider.velocity.y / magnitude;
-
-    if is_key_pressed(KeyCode::Right) {
+    let out = hider_network.forward(array![[hider.x as f64, hider.y as f64, hider.velocity.x as f64, hider.velocity.y as f64]]);
+    
+    let index = out.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
+    println!("{:?}", index);
+    if index == 0 {
         direction_x = degree_to_radian(0.0).cos();
         direction_y = degree_to_radian(0.0).sin();
-    } else if is_key_pressed(KeyCode::Left) {
+    } else if index == 1 {
         direction_x = degree_to_radian(180.0).cos();
         direction_y = degree_to_radian(180.0).sin();
-    } else if is_key_pressed(KeyCode::Up) {
+    } else if index == 2 {
         direction_y = degree_to_radian(-90.0).sin();
         direction_x = degree_to_radian(-90.0).cos();
-    } else if is_key_pressed(KeyCode::Down) {
+    } else if index == 3 {
         direction_y = degree_to_radian(90.0).sin();
         direction_x = degree_to_radian(90.0).cos();
     }
@@ -273,9 +277,8 @@ async fn main() {
     let obstacle = Obstacle::new(150.0, 150.0, 100.0, YELLOW);
     let mut found = false;
     
-    let hider_network = network::NeuralNetwork::new();
-    hider_network.show(); 
-    
+    let mut hider_network = network::NeuralNetwork::new();
+
     loop {      
         if is_key_pressed(KeyCode::Space) {
             game_status = GameStatus::Running;
@@ -286,7 +289,7 @@ async fn main() {
             clear_background(BLACK);
             let t = get_frame_time() as f32 * speed;
             move_seeker(&mut seeker, &obstacle, t, width, height, fov, radius);
-            move_hider(&mut hider, t, width, height, radius);
+            move_hider(&mut hider, t, width, height, radius, &hider_network);
             draw_frame(&hider, &seeker, &obstacle, radius);
             found = seeker.vision_sensors.iter().any(|sensor| sensor.sees_hider(&hider, &obstacle));
             if found {
