@@ -45,49 +45,40 @@ struct Obstacle {
 }
 
 
+/* ---------Implementations --------- */
 impl VisionSensor {
     fn sees_hider(&self, hider: &Hider, obstable: &Obstacle) -> bool {
         let blocked = self.blocked_by_obs(obstable);
         let start_x = self.x;
         let start_y = self.y;
-
         let mut end_x = self.x + self.range * self.angle.cos();
         let mut end_y = self.y + self.range * self.angle.sin();
-
         if blocked.0 != 0.0 || blocked.1 != 0.0 {
             end_x = blocked.0;
             end_y = blocked.1;
         }
-
-        // get t, the projection of the hider on the line
         let t = ((hider.x - start_x) * (end_x - start_x) + (hider.y - start_y) * (end_y - start_y)) / (self.range * self.range);
         let t = t.max(0.0).min(1.0);
         let closest_x = start_x + t * (end_x - start_x);
         let closest_y = start_y + t * (end_y - start_y);
-
         let distance = ((hider.x - closest_x).powi(2) + (hider.y - closest_y).powi(2)).sqrt();
-
         return distance < 10.0;
     }
 
     fn blocked_by_obs(&self, obs: &Obstacle) -> (f32, f32) {
         let sensor_end_x = self.x + self.range * self.angle.cos();
         let sensor_end_y = self.y + self.range * self.angle.sin();
-
         let p1 = (self.x, self.y);
         let p2 = (sensor_end_x, sensor_end_y);
         let p3 = (obs.x, obs.y);
         let p4 = (obs.x + obs.length, obs.y);
-
         let intersection = line_intersection(p1, p2, p3, p4);
-
         match intersection {
             Some((x, y)) => (x, y),
             None => (0.0, 0.0),
         }
     }
 }
-
 
 
 /* ---------Functions --------- */
