@@ -1,56 +1,55 @@
 use ndarray::Array2;
 use rand::Rng;
+use rand_distr::{Distribution, Normal};
 
-fn sigmoid(x: f32) -> f32 {
+fn sigmoid(x: f64) -> f64 {
     1.0 / (1.0 + (-x).exp())
 }
 
-pub struct Network {
-    input_weights: Array2<f32>,
-    hidden_weights: Array2<f32>,
-    output_weights: Array2<f32>,
+pub struct NeuralNetwork {
+    input_weights: Array2<f64>,
+    output_weights: Array2<f64>,
+    hidden_bias: Array2<f64>,
+    output_bias: Array2<f64>,
 }
 
-pub impl Network {
-    pub fn new(input_size: usize, hidden_size: usize, output_size: usize) -> Self {
+impl NeuralNetwork {
+    pub fn new() -> Self {
         let mut rng = rand::thread_rng();
-        let input_weights = Array2::from_shape_fn((hidden_size, input_size), |_| rng.gen_range(-1.0..1.0));
-        let hidden_weights = Array2::from_shape_fn((output_size, hidden_size), |_| rng.gen_range(-1.0..1.0));
-        let output_weights = Array2::from_shape_fn((output_size, 1), |_| rng.gen_range(-1.0..1.0));
-        Self {
+        let input_weights = Array2::from_shape_fn((8, 4), |_| rng.gen::<f64>() * 2.0 - 1.0);
+        let output_weights = Array2::from_shape_fn((4, 8), |_| rng.gen::<f64>() * 2.0 - 1.0);
+        let hidden_bias = Array2::from_shape_fn((8, 1), |_| rng.gen::<f64>() * 2.0 - 1.0);
+        let output_bias = Array2::from_shape_fn((4, 1), |_| rng.gen::<f64>() * 2.0 - 1.0);
+
+        NeuralNetwork {
             input_weights,
-            hidden_weights,
             output_weights,
+            hidden_bias,
+            output_bias,
         }
     }
 
-    pub fn forward(&self, input: &Array2<f64>) -> Array2<f64> {
-        let input = self.input_weights.dot(input);
-        let hidden_output = input.mapv(sigmoid);
-
-        let hidden_output = self.hidden_weights.dot(&hidden_output);
-        let hidden_output = hidden_output.mapv(sigmoid);
-
-        let final_input = self.output_weights.dot(&hidden_output);
+    pub fn forward(&self, inputs: Array2<f64>) -> Array2<f64> {
+        let hidden_input = self.input_weights.dot(&inputs) + &self.hidden_bias;
+        let hidden_output = hidden_input.mapv(sigmoid);
+        let final_input = self.output_weights.dot(&hidden_output) + &self.output_bias;
         final_input.mapv(sigmoid)
     }
 
-    pub fn perturb(&mut self, mutation_rate: f32) {
+    pub fn perturbate(&mut self, mutation_strength: f64) {
+        let normal_dist = Normal::new(0.0, mutation_strength).unwrap();
         let mut rng = rand::thread_rng();
-        for i in 0..self.input_weights.len() {
-            if rng.gen_range(0.0..1.0) < mutation_rate {
-                self.input_weights[i] += rng.gen_range(-1.0..1.0);
-            }
-        }
-        for i in 0..self.hidden_weights.len() {
-            if rng.gen_range(0.0..1.0) < mutation_rate {
-                self.hidden_weights[i] += rng.gen_range(-1.0..1.0);
-            }
-        }
-        for i in 0..self.output_weights.len() {
-            if rng.gen_range(0.0..1.0) < mutation_rate {
-                self.output_weights[i] += rng.gen_range(-1.0..1.0);
-            }
-        }
+
+        self.input_weights.map_inplace(|w| *w += normal_dist.sample(&mut rng));
+        self.output_weights.map_inplace(|w| *w += normal_dist.sample(&mut rng));
+        self.hidden_bias.map_inplace(|b| *b += normal_dist.sample(&mut rng));
+        self.output_bias.map_inplace(|b| *b += normal_dist.sample(&mut rng));
+    }
+
+    pub fn show(&self) {
+        println!("Input weights: {:?}", self.input_weights);
+        println!("Output weights: {:?}", self.output_weights);
+        println!("Hidden bias: {:?}", self.hidden_bias);
+        println!("Output bias: {:?}", self.output_bias);
     }
 }

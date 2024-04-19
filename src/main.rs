@@ -1,8 +1,6 @@
-use std::io::Seek;
-
 use macroquad::rand::gen_range;
 use macroquad::prelude::*;
-
+mod network;
 
 /* ---------Enums------------ */
 enum GameStatus {
@@ -274,8 +272,11 @@ async fn main() {
     let mut hider = Hider::new(200.0, 200.0, BLUE, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
     let obstacle = Obstacle::new(150.0, 150.0, 100.0, YELLOW);
     let mut found = false;
-
-    loop {  
+    
+    let hider_network = network::NeuralNetwork::new();
+    hider_network.show(); 
+    
+    loop {      
         if is_key_pressed(KeyCode::Space) {
             game_status = GameStatus::Running;
             found = false;
