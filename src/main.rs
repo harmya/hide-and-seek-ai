@@ -37,6 +37,7 @@ fn degree_to_radian(degree: f32) -> f32 {
 }
 
 fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
+
     let magnitude = (seeker.velocity.x.powi(2) + seeker.velocity.y.powi(2)).sqrt();
     let mut direction_x = seeker.velocity.x / magnitude;
     let mut direction_y = seeker.velocity.y / magnitude;
@@ -59,6 +60,9 @@ fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
     if seeker.y > height - 10.0 || seeker.y < 10.0 {
         seeker.velocity.y = -seeker.velocity.y;
     }
+
+    println!("{:?}", seeker.velocity.x);
+    println!("{:?}", seeker.velocity.y);
 }
 
 fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
@@ -66,7 +70,7 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
     let mut direction_x = hider.velocity.x / magnitude;
     let mut direction_y = hider.velocity.y / magnitude;
 
-    if gen_range(0, 100) < 50 {
+    if gen_range(0, 100) < 10 {
         direction_x = gen_range(-1.0, 1.0);
         direction_y = gen_range(-1.0, 1.0);
     }
@@ -112,9 +116,6 @@ async fn main() {
         });
 
     }
-    println!("{:?}", seeker.vision_sensors[0].angle);
-    println!("{:?}", seeker.vision_sensors[1].angle);
-    println!("{:?}", seeker.vision_sensors[2].angle);
 
     let mut hider = Hider {
         x: gen_range(0.0, 800.0),
