@@ -1,3 +1,5 @@
+use std::io::Seek;
+
 use macroquad::rand::gen_range;
 use macroquad::prelude::*;
 
@@ -79,6 +81,39 @@ impl VisionSensor {
     }
 }
 
+impl Seeker {
+    fn new(x: f32, y: f32, color: Color, num_vision_sensors: u32, velocity: Velocity) -> Self {
+        let step_angle = 90.0 / (num_vision_sensors as f32 - 1.0);
+        let mut vision_sensors = Vec::new();
+        for i in 0..num_vision_sensors {
+            vision_sensors.push(VisionSensor {
+                x,
+                y,
+                angle: degree_to_radian(-90.0 + step_angle * i as f32),
+                range: 50.0,
+            });
+        }
+        Self {
+            x,
+            y,
+            color,
+            num_vision_sensors,
+            vision_sensors,
+            velocity,
+        }
+    }
+}
+
+impl Hider {
+    fn new(x: f32, y: f32, color: Color, velocity: Velocity) -> Self {
+        Self {
+            x,
+            y,
+            color,
+            velocity,
+        }
+    }
+}
 
 /* ---------Functions --------- */
 
@@ -223,33 +258,9 @@ async fn main() {
     let width = screen_width();
     let height = screen_height();
     let fov = 90.0;
-    let mut seeker = Seeker {
-        x: gen_range(radius, width),
-        y: gen_range(radius, height),
-        color: RED,
-        num_vision_sensors: 6,
-        vision_sensors: Vec::new(),
-        velocity: Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) },
-    };
+    let mut seeker = Seeker::new(100.0, 100.0, RED, 5, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
 
-    let step_angle = fov / (seeker.num_vision_sensors as f32 - 1.0);
-
-    for i in 0..seeker.num_vision_sensors {
-        seeker.vision_sensors.push(VisionSensor {
-            x: seeker.x,
-            y: seeker.y,
-            angle: degree_to_radian(-fov / 2.0 + step_angle * i as f32),
-            range: 50.0,
-        });
-
-    }
-
-    let mut hider = Hider {
-        x: gen_range(0.0, width),
-        y: gen_range(0.0, height),
-        color: BLUE,
-        velocity: Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) },
-    };
+    let mut hider = Hider::new(200.0, 200.0, BLUE, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
 
 
     let obstacle = Obstacle {
