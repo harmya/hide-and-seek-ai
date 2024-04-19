@@ -47,8 +47,11 @@ fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
         direction_y = gen_range(-1.0, 1.0);
     }
 
-    seeker.x = seeker.x + seeker.velocity.x * time * direction_x;
-    seeker.y = seeker.y + seeker.velocity.y * time * direction_y;
+    seeker.velocity.x = direction_x * magnitude;
+    seeker.velocity.y = direction_y * magnitude;
+
+    seeker.x = seeker.x + seeker.velocity.x * time;
+    seeker.y = seeker.y + seeker.velocity.y * time;
 
     if seeker.x > width - 10.0 || seeker.x < 10.0 {
         seeker.velocity.x = -seeker.velocity.x;
@@ -63,13 +66,16 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
     let mut direction_x = hider.velocity.x / magnitude;
     let mut direction_y = hider.velocity.y / magnitude;
 
-    if gen_range(0, 100) < 10 {
+    if gen_range(0, 100) < 50 {
         direction_x = gen_range(-1.0, 1.0);
         direction_y = gen_range(-1.0, 1.0);
     }
 
-    hider.x = hider.x + hider.velocity.x * time * direction_x;
-    hider.y = hider.y + hider.velocity.y * time * direction_y;
+    hider.velocity.x = direction_x * magnitude;
+    hider.velocity.y = direction_y * magnitude;
+
+    hider.x = hider.x + hider.velocity.x * time;
+    hider.y = hider.y + hider.velocity.y * time;
 
     if hider.x > width - 10.0 || hider.x < 10.0 {
         hider.velocity.x = -hider.velocity.x;
