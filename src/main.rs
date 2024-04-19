@@ -10,7 +10,7 @@ struct Velocity {
     y: f32,
 }
 
-struct Vision_Sensor {
+struct VisionSensor {
     x: f32,
     y: f32,
     angle: f32,
@@ -22,7 +22,7 @@ struct Seeker {
     y: f32,
     color: Color,
     num_vision_sensors: u32,
-    vision_sensors: Vec<Vision_Sensor>,
+    vision_sensors: Vec<VisionSensor>,
     velocity: Velocity,
 }
 struct Hider {
@@ -119,7 +119,7 @@ async fn main() {
     let step_angle = 120.0 / (seeker.num_vision_sensors as f32 - 1.0) ;
 
     for i in 0..seeker.num_vision_sensors {
-        seeker.vision_sensors.push(Vision_Sensor {
+        seeker.vision_sensors.push(VisionSensor {
             x: seeker.x,
             y: seeker.y,
             angle: degree_to_radian(-60.0 + step_angle * i as f32),
