@@ -21,6 +21,30 @@ struct VisionSensor {
     range: f32,
 }
 
+struct Seeker {
+    x: f32,
+    y: f32,
+    color: Color,
+    num_vision_sensors: u32,
+    vision_sensors: Vec<VisionSensor>,
+    velocity: Velocity,
+}
+struct Hider {
+    x: f32,
+    y: f32,
+    color: Color,
+    caught: bool,
+    velocity: Velocity,
+}
+
+struct Obstacle {
+    x: f32,
+    y: f32,
+    length: f32,
+    color: Color,
+}
+
+
 impl VisionSensor {
     fn sees_hider(&self, hider: &Hider, obstable: &Obstacle) -> bool {
         let blocked = self.blocked_by_obs(obstable);
@@ -63,28 +87,7 @@ impl VisionSensor {
         }
     }
 }
-struct Seeker {
-    x: f32,
-    y: f32,
-    color: Color,
-    num_vision_sensors: u32,
-    vision_sensors: Vec<VisionSensor>,
-    velocity: Velocity,
-}
-struct Hider {
-    x: f32,
-    y: f32,
-    color: Color,
-    caught: bool,
-    velocity: Velocity,
-}
 
-struct Obstacle {
-    x: f32,
-    y: f32,
-    length: f32,
-    color: Color,
-}
 
 
 /* ---------Functions --------- */
