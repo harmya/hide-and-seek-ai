@@ -17,6 +17,19 @@ struct VisionSensor {
     range: f32,
 }
 
+impl VisionSensor {
+    fn sees_hider(&self, hider: &Hider) -> bool {
+        let distance = ((self.x - hider.x).powi(2) + (self.y - hider.y).powi(2)).sqrt();
+        if distance < self.range + 9.0 {
+            let angle = (hider.y - self.y).atan2(hider.x - self.x);
+            let angle_diff = angle - self.angle;
+            if angle_diff.abs() < degree_to_radian(30.0) {
+                return true;
+            }
+        }
+        false
+    }
+}
 struct Seeker {
     x: f32,
     y: f32,
@@ -108,8 +121,8 @@ async fn main() {
     let height = screen_height();
 
     let mut seeker = Seeker {
-        x: gen_range(200.0, 600.0),
-        y: gen_range(200.0, 400.0),
+        x: gen_range(10.0, width),
+        y: gen_range(10.0, height),
         color: RED,
         num_vision_sensors: 6,
         vision_sensors: Vec::new(),
@@ -129,8 +142,8 @@ async fn main() {
     }
 
     let mut hider = Hider {
-        x: gen_range(0.0, 800.0),
-        y: gen_range(0.0, 600.0),
+        x: gen_range(0.0, width),
+        y: gen_range(0.0, height),
         color: BLUE,
         caught: false,
         velocity: Velocity { x: gen_range(-10.0, 10.0), y: gen_range(-10.0, 10.0) },
@@ -145,13 +158,14 @@ async fn main() {
 
         draw_circle(seeker.x, seeker.y, radius, seeker.color);
         for sensor in seeker.vision_sensors.iter() {
+            let color = if sensor.sees_hider(&hider) { GREEN } else { WHITE };
             draw_line(
                 sensor.x,
                 sensor.y,
                 sensor.x + sensor.range * sensor.angle.cos(),
                 sensor.y + sensor.range * sensor.angle.sin(),
                 2.0,
-                seeker.color,
+                color,
             );
         }
         draw_circle(hider.x, hider.y, radius, hider.color);
@@ -162,8 +176,8 @@ async fn main() {
 fn window_conf() -> Conf {
     Conf {
         window_title: "Hide and Seek".to_owned(),
-        window_width: 800,
-        window_height: 600,
+        window_width: 400,
+        window_height: 300,
         ..Default::default()
     }
 }
