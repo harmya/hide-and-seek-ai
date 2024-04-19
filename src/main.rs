@@ -1,9 +1,5 @@
-use core::time;
-
 use macroquad::rand::gen_range;
-use macroquad::{prelude::*};
-use ::rand::seq::index;
-
+use macroquad::prelude::*;
 
 struct Velocity {
     x: f32,
