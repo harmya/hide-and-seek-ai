@@ -37,26 +37,26 @@ fn degree_to_radian(degree: f32) -> f32 {
 }
 
 
-fn move_seeker(seeker: &mut Seeker, time: f32) {
+fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
     seeker.x = seeker.x + seeker.velocity.x * time;
     seeker.y = seeker.y + seeker.velocity.y * time;
 
-    if seeker.x > 800.0 || seeker.x < 0.0 {
+    if seeker.x > width - 10.0 || seeker.x < 10.0 {
         seeker.velocity.x = -seeker.velocity.x;
     }
-    if seeker.y > 600.0 || seeker.y < 0.0 {
+    if seeker.y > height - 10.0 || seeker.y < 10.0 {
         seeker.velocity.y = -seeker.velocity.y;
     }
 }
 
-fn move_hider(hider: &mut Hider, time: f32) {
+fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
     hider.x = hider.x + hider.velocity.x * time;
     hider.y = hider.y + hider.velocity.y * time;
 
-    if hider.x > 800.0 || hider.x < 0.0 {
+    if hider.x > width - 10.0 || hider.x < 10.0 {
         hider.velocity.x = -hider.velocity.x;
     }
-    if hider.y > 600.0 || hider.y < 0.0 {
+    if hider.y > height - 10.0 || hider.y < 10.0 {
         hider.velocity.y = -hider.velocity.y;
     }
 }
@@ -65,7 +65,9 @@ fn move_hider(hider: &mut Hider, time: f32) {
 async fn main() {
     let radius = 10.0;
     let speed = 5.0;
-    
+    let width = screen_width();
+    let height = screen_height();
+
     let mut seeker = Seeker {
         x: gen_range(200.0, 600.0),
         y: gen_range(200.0, 400.0),
@@ -102,8 +104,8 @@ async fn main() {
         clear_background(BLACK);
     
         let t = get_frame_time() as f32 * speed;
-        move_seeker(&mut seeker, t);
-        move_hider(&mut hider, t);
+        move_seeker(&mut seeker, t, width, height);
+        move_hider(&mut hider, t, width, height);
 
         for sensor in seeker.vision_sensors.iter_mut() {
             sensor.x = seeker.x;
