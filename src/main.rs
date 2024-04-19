@@ -186,7 +186,6 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32
     let mut direction_x = hider.velocity.x / magnitude;
     let mut direction_y = hider.velocity.y / magnitude;
     let out = hider_network.forward(array![[hider.x as f64, hider.y as f64, hider.velocity.x as f64, hider.velocity.y as f64]]);
-    
     let index = out.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
     println!("{:?}", index);
     if index == 0 {
@@ -203,18 +202,22 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32
         direction_x = degree_to_radian(90.0).cos();
     }
 
+    if hider.x > width - radius || hider.x < radius {
+        direction_x = -direction_x;
+    }
+    if hider.y > height - radius || hider.y < radius {
+        direction_y = -direction_y;
+    }
+    
     hider.velocity.x = direction_x * magnitude;
     hider.velocity.y = direction_y * magnitude;
+
+
 
     hider.x = hider.x + hider.velocity.x * time;
     hider.y = hider.y + hider.velocity.y * time;
 
-    if hider.x > width - radius || hider.x < radius {
-        hider.velocity.x = -hider.velocity.x;
-    }
-    if hider.y > height - radius || hider.y < radius {
-        hider.velocity.y = -hider.velocity.y;
-    }
+
 
 }
 
@@ -278,13 +281,8 @@ async fn main() {
     let mut found = false;
     
     let mut hider_network = network::NeuralNetwork::new();
-
-    loop {      
-        if is_key_pressed(KeyCode::Space) {
-            game_status = GameStatus::Running;
-            found = false;
-        }
-
+    
+    loop {
         if let GameStatus::Running = game_status {
             clear_background(BLACK);
             let t = get_frame_time() as f32 * speed;
@@ -293,13 +291,9 @@ async fn main() {
             draw_frame(&hider, &seeker, &obstacle, radius);
             found = seeker.vision_sensors.iter().any(|sensor| sensor.sees_hider(&hider, &obstacle));
             if found {
-                game_status = GameStatus::Paused;
+                hider_network.perturbate(0.3);
             }
         }
-        if let GameStatus::Paused = game_status {
-            draw_frame(&hider, &seeker, &obstacle, radius);
-        }
-
         next_frame().await
     }
         
