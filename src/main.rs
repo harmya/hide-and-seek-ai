@@ -1,6 +1,8 @@
 use macroquad::rand::gen_range;
 use macroquad::prelude::*;
 
+
+/* ---------Structs --------- */
 struct Velocity {
     x: f32,
     y: f32,
@@ -42,11 +44,14 @@ struct Hider {
     velocity: Velocity,
 }
 
+
+/* ---------Functions --------- */
+
 fn degree_to_radian(degree: f32) -> f32 {
     degree * std::f32::consts::PI / 180.0
 }
 
-fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
+fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32, fov: f32) {
 
     if seeker.x > width - 10.0 || seeker.x < 10.0 {
         seeker.velocity.x = -seeker.velocity.x;
@@ -73,11 +78,11 @@ fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
     seeker.y = seeker.y + seeker.velocity.y * time;
 
     let angle_of_velocity = seeker.velocity.y.atan2(seeker.velocity.x);
-    let step_angle = 120.0 / (seeker.num_vision_sensors as f32 - 1.0);
+    let step_angle = fov / (seeker.num_vision_sensors as f32 - 1.0);
 
     let mut index :f32 = 0.0;
     for sensor in seeker.vision_sensors.iter_mut() {
-        sensor.angle = angle_of_velocity + degree_to_radian(-60.0 + step_angle * index as f32);
+        sensor.angle = angle_of_velocity + degree_to_radian(-fov / 2.0 + step_angle * index);
         sensor.x = seeker.x;
         sensor.y = seeker.y;
         index += 1.0;
@@ -109,13 +114,15 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
     }
 }
 
+
+/* ---------Main --------- */
 #[macroquad::main(window_conf)]
 async fn main() {
     let radius = 10.0;
     let speed = 8.0;
     let width = screen_width();
     let height = screen_height();
-
+    let fov = 90.0;
     let mut seeker = Seeker {
         x: gen_range(10.0, width),
         y: gen_range(10.0, height),
@@ -125,13 +132,13 @@ async fn main() {
         velocity: Velocity { x: gen_range(-10.0, 10.0), y: gen_range(-10.0, 10.0) },
     };
 
-    let step_angle = 120.0 / (seeker.num_vision_sensors as f32 - 1.0) ;
+    let step_angle = fov / (seeker.num_vision_sensors as f32 - 1.0);
 
     for i in 0..seeker.num_vision_sensors {
         seeker.vision_sensors.push(VisionSensor {
             x: seeker.x,
             y: seeker.y,
-            angle: degree_to_radian(-60.0 + step_angle * i as f32),
+            angle: degree_to_radian(-fov / 2.0 + step_angle * i as f32),
             range: 50.0,
         });
 
@@ -149,7 +156,7 @@ async fn main() {
         clear_background(BLACK);
     
         let t = get_frame_time() as f32 * speed;
-        move_seeker(&mut seeker, t, width, height);
+        move_seeker(&mut seeker, t, width, height, fov);
         move_hider(&mut hider, t, width, height);
 
         draw_circle(seeker.x, seeker.y, radius, seeker.color);
