@@ -38,23 +38,17 @@ fn degree_to_radian(degree: f32) -> f32 {
 
 fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
     let magnitude = (seeker.velocity.x.powi(2) + seeker.velocity.y.powi(2)).sqrt();
-    let direction_x = seeker.velocity.x / magnitude;
-    let direction_y = seeker.velocity.y / magnitude;
+    let mut direction_x = seeker.velocity.x / magnitude;
+    let mut direction_y = seeker.velocity.y / magnitude;
 
 
     if gen_range(0, 100) < 10 {
-        let direction_x = gen_range(-1.0, 1.0);
-        let direction_y = gen_range(-1.0, 1.0);
+        direction_x = gen_range(-1.0, 1.0);
+        direction_y = gen_range(-1.0, 1.0);
     }
 
-    let random_number = gen_range(0.0, 1.0);
-    if random_number < 0.1 {
-        seeker.velocity.x = gen_range(-10.0, 10.0);
-        seeker.velocity.y = gen_range(-10.0, 10.0);
-    }
-
-    seeker.x = seeker.x + seeker.velocity.x * time;
-    seeker.y = seeker.y + seeker.velocity.y * time;
+    seeker.x = seeker.x + seeker.velocity.x * time * direction_x;
+    seeker.y = seeker.y + seeker.velocity.y * time * direction_y;
 
     if seeker.x > width - 10.0 || seeker.x < 10.0 {
         seeker.velocity.x = -seeker.velocity.x;
@@ -65,8 +59,17 @@ fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
 }
 
 fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32) {
-    hider.x = hider.x + hider.velocity.x * time;
-    hider.y = hider.y + hider.velocity.y * time;
+    let magnitude = (hider.velocity.x.powi(2) + hider.velocity.y.powi(2)).sqrt();
+    let mut direction_x = hider.velocity.x / magnitude;
+    let mut direction_y = hider.velocity.y / magnitude;
+
+    if gen_range(0, 100) < 10 {
+        direction_x = gen_range(-1.0, 1.0);
+        direction_y = gen_range(-1.0, 1.0);
+    }
+
+    hider.x = hider.x + hider.velocity.x * time * direction_x;
+    hider.y = hider.y + hider.velocity.y * time * direction_y;
 
     if hider.x > width - 10.0 || hider.x < 10.0 {
         hider.velocity.x = -hider.velocity.x;
