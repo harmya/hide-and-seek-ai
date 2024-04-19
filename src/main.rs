@@ -33,7 +33,6 @@ struct Hider {
     x: f32,
     y: f32,
     color: Color,
-    caught: bool,
     velocity: Velocity,
 }
 
