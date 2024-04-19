@@ -2,6 +2,7 @@ use core::time;
 
 use macroquad::rand::gen_range;
 use macroquad::{prelude::*};
+use ::rand::seq::index;
 
 
 struct Velocity {
@@ -64,10 +65,14 @@ fn move_seeker(seeker: &mut Seeker, time: f32, width: f32, height: f32) {
     seeker.y = seeker.y + seeker.velocity.y * time;
 
     let angle_of_velocity = seeker.velocity.y.atan2(seeker.velocity.x);
+    let step_angle = 120.0 / (seeker.num_vision_sensors as f32 - 1.0);
+
+    let mut index :f32 = 0.0;
     for sensor in seeker.vision_sensors.iter_mut() {
-        sensor.angle = angle_of_velocity + sensor.angle;
+        sensor.angle = angle_of_velocity + degree_to_radian(-60.0 + step_angle * index as f32);
         sensor.x = seeker.x;
         sensor.y = seeker.y;
+        index += 1.0;
     }
 }
 
