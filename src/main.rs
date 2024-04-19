@@ -272,15 +272,7 @@ async fn main() {
     let mut seeker = Seeker::new(100.0, 100.0, RED, 5, 
             Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
     let mut hider = Hider::new(200.0, 200.0, BLUE, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
-
-
-    let obstacle = Obstacle {
-        x: 100.0,
-        y: 100.0,
-        length: 100.0,
-        color: WHITE,
-    };
-
+    let obstacle = Obstacle::new(150.0, 150.0, 100.0, YELLOW);
     let mut found = false;
 
     loop {  
