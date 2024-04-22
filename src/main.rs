@@ -35,6 +35,9 @@ struct Hider {
     y: f32,
     color: Color,
     velocity: Velocity,
+    network: network::NeuralNetwork,
+    born_time: f64,
+    caught: bool,
 }
 
 struct Obstacle {
@@ -104,12 +107,26 @@ impl Seeker {
 }
 
 impl Hider {
-    fn new(x: f32, y: f32, color: Color, velocity: Velocity) -> Self {
+    fn new(x: f32, y: f32, color: Color, velocity: Velocity, network: Option<network::NeuralNetwork>, new: bool) -> Self {
+
+        let mut network = match network {
+            Some(network) => network,
+            None => network::NeuralNetwork::new(6, 4, 4),
+        };
+
+        if !new {
+            network.mutate(0.3);
+        }
+
+
         Self {
             x,
             y,
             color,
             velocity,
+            network,
+            born_time: get_time(),
+            caught: false,
         }
     }
 }
@@ -181,27 +198,31 @@ fn move_seeker(seeker: &mut Seeker, obst: &Obstacle, time: f32, width: f32, heig
     }
 }
 
-fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32, hider_network: &network::NeuralNetwork) {
+fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32, direction: usize, seeker: &Seeker, obstacle: &Obstacle) {
+    if hider.caught {
+        return;
+    }
+
     let magnitude = (hider.velocity.x.powi(2) + hider.velocity.y.powi(2)).sqrt();
     let mut direction_x = hider.velocity.x / magnitude;
     let mut direction_y = hider.velocity.y / magnitude;
-    let out = hider_network.forward(array![[hider.x as f64, hider.y as f64, hider.velocity.x as f64, hider.velocity.y as f64]]);
-    let index = out.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
-    println!("{:?}", index);
-    if index == 0 {
+
+
+    if direction == 0 { // Move right
         direction_x = degree_to_radian(0.0).cos();
         direction_y = degree_to_radian(0.0).sin();
-    } else if index == 1 {
+    } else if direction == 1 { // Move left
         direction_x = degree_to_radian(180.0).cos();
         direction_y = degree_to_radian(180.0).sin();
-    } else if index == 2 {
-        direction_y = degree_to_radian(-90.0).sin();
-        direction_x = degree_to_radian(-90.0).cos();
-    } else if index == 3 {
-        direction_y = degree_to_radian(90.0).sin();
+    } else if direction == 2 { // Move up
         direction_x = degree_to_radian(90.0).cos();
+        direction_y = degree_to_radian(90.0).cos();
+    } else if direction == 3 { // Move down
+        direction_x = degree_to_radian(270.0).cos();
+        direction_y = degree_to_radian(270.0).sin();
     }
 
+    
     if hider.x > width - radius || hider.x < radius {
         direction_x = -direction_x;
     }
@@ -211,8 +232,6 @@ fn move_hider(hider: &mut Hider, time: f32, width: f32, height: f32, radius: f32
     
     hider.velocity.x = direction_x * magnitude;
     hider.velocity.y = direction_y * magnitude;
-
-
 
     hider.x = hider.x + hider.velocity.x * time;
     hider.y = hider.y + hider.velocity.y * time;
@@ -240,10 +259,9 @@ fn line_intersection(p1: (f32, f32), p2: (f32, f32), p3: (f32, f32), p4: (f32, f
     None
 }
 
-fn draw_frame(hider: &Hider, seeker: &Seeker, obstacle: &Obstacle, radius: f32) {
+fn draw_frame(hiders: &Vec<Hider>, seeker: &Seeker, obstacle: &Obstacle, radius: f32) {
     draw_circle(seeker.x, seeker.y, radius, seeker.color);
     for sensor in seeker.vision_sensors.iter() {
-        let color = if sensor.sees_hider(hider, obstacle) { GREEN } else { WHITE };
         let (x, y) = sensor.blocked_by_obs(obstacle);
         draw_line(
             sensor.x,
@@ -251,10 +269,12 @@ fn draw_frame(hider: &Hider, seeker: &Seeker, obstacle: &Obstacle, radius: f32) 
             if x == 0.0 { sensor.x + sensor.range * sensor.angle.cos() } else { x },
             if y == 0.0 { sensor.y + sensor.range * sensor.angle.sin() } else { y },
             1.0,
-            color,
+            GREEN,
         );
     }
-    draw_circle(hider.x, hider.y, radius, hider.color);
+    for hider in hiders.iter() {
+        draw_circle(hider.x, hider.y, radius, hider.color);
+    }
     draw_line(
         obstacle.x,
         obstacle.y,
@@ -276,22 +296,60 @@ async fn main() {
     let fov = 90.0;
     let mut seeker = Seeker::new(100.0, 100.0, RED, 5, 
             Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
-    let mut hider = Hider::new(200.0, 200.0, BLUE, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) });
     let obstacle = Obstacle::new(150.0, 150.0, 100.0, YELLOW);
     let mut found = false;
     
-    let mut hider_network = network::NeuralNetwork::new();
-    
+    let mut hiders : Vec<Hider> = Vec::new();
+    for _ in 0..10 {
+        hiders.push(Hider::new(gen_range(50.0, width - 50.0), gen_range(50.0, height - 50.0), 
+            BLUE, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) }, None, true));
+    }
+
+    let mut caught_count = 0;
+
     loop {
         if let GameStatus::Running = game_status {
             clear_background(BLACK);
             let t = get_frame_time() as f32 * speed;
             move_seeker(&mut seeker, &obstacle, t, width, height, fov, radius);
-            move_hider(&mut hider, t, width, height, radius, &hider_network);
-            draw_frame(&hider, &seeker, &obstacle, radius);
-            found = seeker.vision_sensors.iter().any(|sensor| sensor.sees_hider(&hider, &obstacle));
-            if found {
-                hider_network.perturbate(0.3);
+            for hider in hiders.iter_mut() {
+                let direction = hider.network.get_direction(array![[hider.x as f64, hider.y as f64, seeker.x as f64, seeker.y as f64, obstacle.x as f64, obstacle.y as f64]]);
+                move_hider(hider, t, width, height, radius, direction, &seeker, &obstacle);
+                found = seeker.vision_sensors.iter().any(|sensor| sensor.sees_hider(&hider, &obstacle));
+                found = seeker.vision_sensors.iter().any(|sensor| sensor.sees_hider(&hider, &obstacle));
+                if found {
+                    if !hider.caught {
+                        hider.velocity.x = 0.0;
+                        hider.velocity.y = 0.0;
+                        hider.caught = true;
+                        caught_count += 1;
+                    }
+                }
+            }
+            draw_frame(&hiders, &seeker, &obstacle, radius);
+            println!("Caught count: {}", caught_count);
+            println!("Hiders count: {}", hiders.len());
+            if caught_count == hiders.len() {
+                //get the index of the hider that was caught with max time
+                let current_time = get_time();
+                let mut max_time = 0.0;
+                let mut max_index = 0;
+                for (index, hider) in hiders.iter().enumerate() {
+                    if current_time - hider.born_time > max_time {
+                        max_time = current_time - hider.born_time;
+                        max_index = index;
+                    }
+                }
+                let best_network = hiders[max_index].network.clone();
+                for _ in 0..10 {
+                    hiders.push(Hider::new(gen_range(50.0, width - 50.0), gen_range(50.0, height - 50.0), 
+                    BLUE, Velocity { x: gen_range(-radius, radius), y: gen_range(-radius, radius) }, 
+                    Some(best_network.clone()), false));
+                }
+                //remove all previous caught_count hiders
+                hiders.drain(0..caught_count);
+
+                
             }
         }
         next_frame().await
